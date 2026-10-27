@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Secrets
+.env
+
+# Data, caches, outputs (regenerable; never committed)
+data/
+outputs/
+*.tif
+*.tiff
+*.npz
+
+# Model weights (download instructions in README)
+*.pt
+*.onnx
+runs/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
