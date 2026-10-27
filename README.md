@@ -5,7 +5,8 @@ and shows its evidence.
 
 > *"How many large ships are in Port Everglades this week, and how does that compare to last month?"*
 
-![hero](docs/assets/hero.gif) <!-- TODO (M3): 30-60 s demo GIF -->
+<!-- TODO (M3): replace with a 30-60 s demo GIF -->
+![Architecture: question → Claude agent loop ↔ MCP tools → Sentinel-2 on AWS → report](docs/assets/architecture.png)
 
 **Status:** work in progress, built in public. Milestone 1 (imagery pipeline + classical detector
 baseline) is underway. The agent and MCP server are not built yet. See [docs/milestones.md](docs/milestones.md).
@@ -55,7 +56,13 @@ uv run ask-a-satellite search --aoi port-everglades --start 2026-09-01 --end 202
 uv run ask-a-satellite detect --aoi port-everglades --start 2026-09-01 --end 2026-10-27
 ```
 
-`detect` writes an annotated PNG and a JSON result to `outputs/`. Copy `.env.example` to `.env` to
+`detect` writes an annotated PNG and a JSON result to `outputs/`. AOI crops are cached in `data/cache/`
+(`--no-cache` to bypass). To build and score the hand-labelled test set, see [eval/README.md](eval/README.md):
+
+```bash
+uv run ask-a-satellite label-kit --aoi port-everglades --start 2026-04-01 --end 2026-10-27
+uv run ask-a-satellite evaluate
+``` Copy `.env.example` to `.env` to
 change defaults. The agent (M3) will need `ANTHROPIC_API_KEY`.
 
 ## Data and licensing
@@ -69,6 +76,7 @@ change defaults. The agent (M3) will need `ANTHROPIC_API_KEY`.
 
 - 10 m pixels: only large vessels are visible. Small boats are missed by design.
 - One snapshot per overpass (~10:30 local solar time), every few days at best, and only on clear days.
-- The classical detector currently over-counts near shorelines (surf, jetties, marinas) and misses
-  ships berthed flush against a quay. See [docs/dev-log.md](docs/dev-log.md).
+- The classical detector rejects anything touching or within 60 m of land. That removes surf, piers,
+  and roofs, but also misses ships berthed against a quay. Small cumulus clouds that the SCL mask misses
+  cause false alarms. See [docs/dev-log.md](docs/dev-log.md).
 - Counts are not validated yet. Precision and recall come in Milestone 2.

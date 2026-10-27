@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -7,7 +8,7 @@ from rasterio.transform import from_origin
 from rasterio.warp import transform_bounds
 
 from ask_a_satellite.models import BandAsset, BBox, SceneInfo
-from ask_a_satellite.tools.raster import read_aoi
+from ask_a_satellite.tools.raster import read_aoi, read_aoi_cached
 
 from .conftest import UTM17N
 
@@ -71,6 +72,19 @@ def test_read_aoi_marks_nodata_as_nan(local_scene):
     aoi = read_aoi(local_scene, bbox)
     assert np.isnan(aoi.bands["nir"][0, 0])
     assert np.isfinite(aoi.bands["nir"][10, 10])
+
+
+def test_read_aoi_cached_round_trips_without_source(local_scene, tmp_path):
+    bbox = _bbox_for(X0 + 1500, Y0 - 2500, X0 + 2500, Y0 - 1500)
+    first = read_aoi_cached(local_scene, bbox, tmp_path / "cache")
+    assert len(list((tmp_path / "cache").glob("*.npz"))) == 1
+    for a in local_scene.assets.values():  # second read must not touch the COGs
+        Path(a.href).unlink()
+    second = read_aoi_cached(local_scene, bbox, tmp_path / "cache")
+    assert second.transform == first.transform and second.crs == first.crs
+    for k, v in first.bands.items():
+        np.testing.assert_array_equal(second.bands[k], v)
+        assert second.bands[k].dtype == v.dtype
 
 
 def test_read_aoi_outside_footprint_raises(local_scene):

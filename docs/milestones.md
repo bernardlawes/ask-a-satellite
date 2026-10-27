@@ -44,9 +44,13 @@ Tasks
 - [x] Two-date count comparison
 - [x] `detect` / `search` / `aois` CLI
 - [x] First real-imagery runs on both ports (see `docs/dev-log.md`: offset bug, white-hull NDWI, land leakage)
-- [ ] Simple on-disk cache of AOI crops (avoid re-downloading during tuning)
-- [ ] Reduce shoreline clutter: shape filter for surf strips, jetties, and marinas (currently dominant false positives)
-- [ ] Tune thresholds on 3–5 real scenes per port against hand labels and record the chosen parameters
+- [x] Simple on-disk cache of AOI crops (avoid re-downloading during tuning)
+- [x] Reduce shoreline clutter: feature-based rejection rules (touches land, near shore, thin strip, vegetation, shallow bright water)
+- [x] Label kit export (Roboflow YOLO) + evaluator (precision/recall/F1): `label-kit`, `evaluate`
+- [x] Post 1 architecture diagram: `docs/assets/architecture.svg` / `.png` (2400×2400)
+- [ ] **Bernard:** hand-label the 10 exported scenes in Roboflow → `eval/truth/` (see `eval/README.md`)
+- [ ] Run `evaluate`, then tune thresholds against the labels and record the chosen parameters
+- [ ] Cloud-edge false positives from small cumulus (buffer the SCL cloud mask / brightness test)
 
 **Visual assets (captured now, used in Post 2)**
 - Side-by-side pairs: raw true colour | NDWI water mask | detections. Same crop and scale, numbered boxes.

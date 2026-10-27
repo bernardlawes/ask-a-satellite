@@ -6,12 +6,17 @@ import argparse
 import json
 import logging
 import sys
+from pathlib import Path
 
 from .aoi import get_aoi, list_aois
 from .config import get_settings
-from .pipeline import first_clear_observation, write_outputs
+from .pipeline import clear_observations, first_clear_observation, write_outputs
 from .tools.compare import compare_counts
+from .tools.evaluate import markdown_table, score, total
 from .tools.imagery import search_scenes
+from .tools.labels import load_meta, read_yolo_boxes, write_label_kit
+from .tools.raster import read_aoi_cached
+from .tools.vessels import METHOD, detect_vessels
 
 
 def _cmd_aois(_: argparse.Namespace) -> int:
@@ -31,8 +36,9 @@ def _cmd_search(args: argparse.Namespace) -> int:
 
 def _observe(args: argparse.Namespace, start: str, end: str):
     aoi = get_aoi(args.aoi)
+    cache = None if args.no_cache else get_settings().cache_dir
     obs, rejected = first_clear_observation(aoi, start, end, max_scene_cloud=args.max_cloud,
-                                            max_aoi_cloud=args.max_aoi_cloud)
+                                            max_aoi_cloud=args.max_aoi_cloud, cache_dir=cache)
     for r in rejected:
         print(f"  rejected {r.scene.id}: {r.reason}", file=sys.stderr)
     if obs is None:
@@ -67,6 +73,42 @@ def _cmd_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_label_kit(args: argparse.Namespace) -> int:
+    aoi = get_aoi(args.aoi)
+    cache = None if args.no_cache else get_settings().cache_dir
+    found, rejected = clear_observations(aoi, args.start, args.end, max_scene_cloud=args.max_cloud,
+                                         max_aoi_cloud=args.max_aoi_cloud, cache_dir=cache,
+                                         limit=args.max_scenes)
+    for r in rejected:
+        print(f"  rejected {r.scene.id}: {r.reason}", file=sys.stderr)
+    for obs in found:
+        stem = write_label_kit(obs.raster, obs.result, aoi.bbox, args.eval_dir)
+        print(f"{stem}: {obs.result.count} pre-annotation(s)")
+    print(f"Upload {args.eval_dir}/images + labels to Roboflow (YOLO format, no resize/tiling), correct "
+          f"the boxes, export YOLO, and save the .txt files to {args.eval_dir}/truth/.")
+    return 0 if found else 2
+
+
+def _cmd_evaluate(args: argparse.Namespace) -> int:
+    eval_dir = Path(args.eval_dir)
+    truth_files = sorted((eval_dir / "truth").glob("*.txt"))
+    if not truth_files:
+        print(f"No hand labels in {eval_dir / 'truth'}; run label-kit and label first.", file=sys.stderr)
+        return 2
+    cache = None if args.no_cache else get_settings().cache_dir
+    scores = []
+    for tf in truth_files:
+        meta, scene, bbox = load_meta(eval_dir / "meta" / f"{tf.stem}.json")
+        raster = read_aoi_cached(scene, bbox, cache)
+        result = detect_vessels(raster, meta["aoi_id"])
+        truth = read_yolo_boxes(tf, tuple(meta["shape"]))
+        scores.append(score(result, truth, name=tf.stem, tol_px=args.tol_px))
+    table = markdown_table([*scores, total(scores)])
+    print(f"Method: {METHOD}, match tolerance {args.tol_px} px\n")
+    print(table)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="ask-a-satellite", description=__doc__)
     p.add_argument("-v", "--verbose", action="store_true")
@@ -88,6 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
         common(sp)
         sp.add_argument("--max-aoi-cloud", type=float, default=0.1, help="max AOI cloud fraction 0-1")
         sp.add_argument("--out", help="output directory (default: $ASK_SAT_OUTPUT_DIR or outputs/)")
+        sp.add_argument("--no-cache", action="store_true", help="always re-read imagery over HTTP")
 
     d = sub.add_parser("detect", help="count large vessels in the newest clear scene in a date range")
     observe(d)
@@ -100,6 +143,20 @@ def build_parser() -> argparse.ArgumentParser:
     for k in ("before-start", "before-end", "after-start", "after-end"):
         c.add_argument(f"--{k}", required=True)
     c.set_defaults(func=_cmd_compare)
+
+    k = sub.add_parser("label-kit", help="export clear scenes + pre-annotations for hand labelling")
+    observe(k)
+    k.add_argument("--start", required=True)
+    k.add_argument("--end", required=True)
+    k.add_argument("--max-scenes", type=int, default=3)
+    k.add_argument("--eval-dir", default="eval")
+    k.set_defaults(func=_cmd_label_kit)
+
+    e = sub.add_parser("evaluate", help="score the detector against hand labels in <eval-dir>/truth")
+    e.add_argument("--eval-dir", default="eval")
+    e.add_argument("--tol-px", type=float, default=2.0)
+    e.add_argument("--no-cache", action="store_true")
+    e.set_defaults(func=_cmd_evaluate)
     return p
 
 

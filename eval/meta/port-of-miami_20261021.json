@@ -1,0 +1,51 @@
+{
+  "stem": "port-of-miami_20261021",
+  "aoi_id": "port-of-miami",
+  "aoi_bbox": {
+    "west": -80.2,
+    "south": 25.755,
+    "east": -80.12,
+    "north": 25.79
+  },
+  "scene": {
+    "id": "S2B_17RNJ_20261021_0_L2A",
+    "datetime": "2026-10-21T16:06:13.098000Z",
+    "cloud_cover": 7.532258,
+    "platform": "sentinel-2b",
+    "mgrs_tile": "MGRS-17RNJ",
+    "assets": {
+      "blue": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/B02.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "green": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/B03.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "red": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/B04.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "nir": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/B08.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "scl": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/SCL.tif",
+        "scale": 1.0,
+        "offset": 0.0
+      }
+    }
+  },
+  "shape": [
+    393,
+    805
+  ],
+  "upscale": 3,
+  "preannotation_method": "classical-ndwi-nir-v1",
+  "credit": "Contains modified Copernicus Sentinel-2 data (2026)"
+}
