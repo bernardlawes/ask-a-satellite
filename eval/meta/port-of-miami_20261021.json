@@ -38,6 +38,11 @@
         "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/SCL.tif",
         "scale": 1.0,
         "offset": 0.0
+      },
+      "swir16": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/10/S2B_17RNJ_20261021_0_L2A/B11.tif",
+        "scale": 0.0001,
+        "offset": 0.0
       }
     }
   },
@@ -46,6 +51,6 @@
     805
   ],
   "upscale": 3,
-  "preannotation_method": "classical-ndwi-nir-v1",
+  "preannotation_method": "classical-ndwi-nir-v2",
   "credit": "Contains modified Copernicus Sentinel-2 data (2026)"
 }

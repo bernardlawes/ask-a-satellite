@@ -6,13 +6,16 @@ Ships are bright in NIR against dark water:
              ship-sized holes (dark-hulled ships punch low-NDWI holes; big holes are islands/land)
   3. cand  = sea & ~cloud & nir above a robust water background (median + k * MAD) and a floor.
              Not "& ~water": white hulls reflect green ~= NIR, so their NDWI sits near 0 and many of
-             their pixels pass the water test.
+             their pixels pass the water test. "cloud" ignores small SCL cloud specks: SCL flags the
+             brightest hulls as cloud.
   4. connected components, filtered by size, then rejected if they touch land or sit < 60 m from it
      (surf, jetties, roofs -- and, unavoidably at 10 m, ships berthed flush against a quay), are thin
-     strips (surf lines, wakes), vegetated, or very bright shallow water; measured with image moments.
+     strips (surf lines, wakes), compact SWIR-bright puffs (small cumulus SCL misses), vegetated, or
+     very bright shallow water; measured with image moments.
 
 Known misses/false alarms: ships berthed flush against a quay (they merge with land), piers, breaking
-wakes, sun-glint, adjacent ships merging into one blob. See docs/architecture.md.
+wakes, sun-glint, adjacent ships merging into one blob, small boats/yachts near the size floor.
+See docs/architecture.md and docs/dev-log.md.
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ from ..models import Detection, DetectionResult
 from .preprocess import cloud_fraction, cloud_mask, ndwi, valid_mask
 from .raster import AOIRaster
 
-METHOD = "classical-ndwi-nir-v1"
+METHOD = "classical-ndwi-nir-v2"
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,13 @@ class ClassicalParams:
     thin_elongation: float = 8.0
     max_ndvi: float = 0.5  # vegetated islets, seagrass
     max_ndwi: float = 0.45  # bright shallow water / surf over sand (white hulls measure 0.1-0.4)
+    # Small cumulus that SCL misses: bright in SWIR. Measured on blob pixels across 5 real scenes:
+    # cloud fragments 0.72-1.17 SWIR/NIR with elongation <= 3.6; hulls mostly 0.23-0.61, the exception
+    # a container ship at 0.81 (deck cargo) with elongation 4.6 -- hence the elongation cap.
+    cloud_max_elongation: float = 4.0
+    cloud_min_swir_nir: float = 0.70
+    # SCL flags the brightest hulls as cloud; ignore SCL cloud specks smaller than this (px at 10 m).
+    min_scl_cloud_px: int = 50
     k_mad: float = 6.0
     nir_floor: float = 0.04
     min_area_px: int = 4
@@ -104,15 +114,20 @@ def _shape(rows: np.ndarray, cols: np.ndarray) -> tuple[float, float]:
 
 
 def reject_reason(rows: np.ndarray, cols: np.ndarray, dist_to_land: np.ndarray, nd: np.ndarray,
-                  ndvi: np.ndarray, p: ClassicalParams) -> str | None:
+                  ndvi: np.ndarray, p: ClassicalParams, swir_nir: np.ndarray | None = None,
+                  ) -> str | None:
     d = dist_to_land[rows, cols]
     if d.min() <= 1.0:
         return "touches_land"
     if np.median(d) < p.min_shore_dist_px:
         return "near_shore"
     length, width = _shape(rows, cols)
-    if width < p.thin_width_px and length / max(width, 0.5) > p.thin_elongation:
+    elongation = length / max(width, 0.5)
+    if width < p.thin_width_px and elongation > p.thin_elongation:
         return "thin_strip"
+    if (swir_nir is not None and elongation < p.cloud_max_elongation
+            and np.nanmean(swir_nir[rows, cols]) >= p.cloud_min_swir_nir):
+        return "cloud_puff"
     if np.nanmean(ndvi[rows, cols]) > p.max_ndvi:
         return "vegetation"
     if np.nanmean(nd[rows, cols]) > p.max_ndwi:
@@ -124,6 +139,7 @@ def find_blobs(bands: dict[str, np.ndarray], cloud: np.ndarray, valid: np.ndarra
                p: ClassicalParams) -> tuple[list[Blob], dict[str, float]]:
     """Array-level detector. Returns candidate blobs and diagnostics."""
     green, nir = bands["green"], bands["nir"]
+    cloud = _remove_small(cloud, p.min_scl_cloud_px) if p.min_scl_cloud_px else cloud
     nd = ndwi(green, nir)
     water = (nd > p.water_ndwi) & valid & ~cloud
     sea = sea_mask(water, p.close_radius_px, p.min_water_body_px, p.max_hole_px)
@@ -142,6 +158,11 @@ def find_blobs(bands: dict[str, np.ndarray], cloud: np.ndarray, valid: np.ndarra
     land = valid & ~sea & ~cloud
     dist_to_land = ndimage.distance_transform_edt(~land)
     ndvi = -nd if "red" not in bands else _ndvi(bands["red"], nir)
+    swir_nir = None
+    if "swir16" in bands:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            swir_nir = bands["swir16"] / nir
+    diag["swir_cloud_test"] = int(swir_nir is not None)
     labels, n = ndimage.label(cand, structure=np.ones((3, 3), dtype=bool))
     blobs: list[Blob] = []
     rejected = dict.fromkeys(REJECT_REASONS, 0)
@@ -153,7 +174,7 @@ def find_blobs(bands: dict[str, np.ndarray], cloud: np.ndarray, valid: np.ndarra
             continue
         rr = rr + sl[0].start
         cc = cc + sl[1].start
-        reason = reject_reason(rr, cc, dist_to_land, nd, ndvi, p)
+        reason = reject_reason(rr, cc, dist_to_land, nd, ndvi, p, swir_nir)
         if reason:
             rejected[reason] += 1
             continue
@@ -164,7 +185,8 @@ def find_blobs(bands: dict[str, np.ndarray], cloud: np.ndarray, valid: np.ndarra
     return blobs, diag
 
 
-REJECT_REASONS = ("touches_land", "near_shore", "thin_strip", "vegetation", "shallow_bright_water")
+REJECT_REASONS = ("touches_land", "near_shore", "thin_strip", "cloud_puff", "vegetation",
+                  "shallow_bright_water")
 
 
 def _ndvi(red: np.ndarray, nir: np.ndarray) -> np.ndarray:
@@ -216,6 +238,8 @@ def detect_vessels(aoi: AOIRaster, aoi_id: str, params: ClassicalParams | None =
         notes.append("Very little clear water detected; count is unreliable.")
     if not np.isfinite(diag["water_nir_median"]):
         notes.append("Not enough clear water to estimate background; no detections attempted.")
+    elif not diag.get("swir_cloud_test"):
+        notes.append("SWIR band unavailable; small clouds missed by SCL may be counted as vessels.")
 
     return DetectionResult(
         aoi_id=aoi_id, scene_id=aoi.scene.id, datetime=aoi.scene.datetime, method=METHOD,

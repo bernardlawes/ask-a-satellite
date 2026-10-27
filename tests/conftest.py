@@ -37,26 +37,29 @@ def synthetic_bands(seed: int = 0, ships=SHIPS, cloud: bool = True) -> dict[str,
     nir = np.full(SHAPE, 0.02, np.float32) + rng.normal(0, 0.002, SHAPE).astype(np.float32)
     red = np.full(SHAPE, 0.04, np.float32)
     blue = np.full(SHAPE, 0.07, np.float32)
+    swir = np.full(SHAPE, 0.005, np.float32)
     scl = np.full(SHAPE, 6, np.uint8)  # water
 
     # land on the left
     green[:, :LAND_COLS], nir[:, :LAND_COLS], red[:, :LAND_COLS] = 0.08, 0.30, 0.09
+    swir[:, :LAND_COLS] = 0.2
     scl[:, :LAND_COLS] = 5
 
-    def paint(r, c, hh, ww, nir_v=0.15, green_v=0.07):
+    def paint(r, c, hh, ww, nir_v=0.15, green_v=0.07, swir_nir=0.35):
         green[r:r + hh, c:c + ww] = green_v
         nir[r:r + hh, c:c + ww] = nir_v
         red[r:r + hh, c:c + ww] = 0.12
+        swir[r:r + hh, c:c + ww] = nir_v * swir_nir
 
     for s in ships:
         paint(*s)
     paint(*TINY_BOAT)
     if cloud:
         r, c, hh, ww = CLOUD
-        paint(r, c, hh, ww, nir_v=0.45, green_v=0.40)
+        paint(r, c, hh, ww, nir_v=0.45, green_v=0.40, swir_nir=0.9)
         scl[r:r + hh, c:c + ww] = 9
         paint(*HIDDEN_SHIP, nir_v=0.5, green_v=0.42)
-    return {"blue": blue, "green": green, "red": red, "nir": nir, "scl": scl}
+    return {"blue": blue, "green": green, "red": red, "nir": nir, "swir16": swir, "scl": scl}
 
 
 @pytest.fixture

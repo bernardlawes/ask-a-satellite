@@ -48,9 +48,9 @@ Tasks
 - [x] Reduce shoreline clutter: feature-based rejection rules (touches land, near shore, thin strip, vegetation, shallow bright water)
 - [x] Label kit export (Roboflow YOLO) + evaluator (precision/recall/F1): `label-kit`, `evaluate`
 - [x] Post 1 architecture diagram: `docs/assets/architecture.svg` / `.png` (2400×2400)
-- [ ] **Bernard:** hand-label the 10 exported scenes in Roboflow → `eval/truth/` (see `eval/README.md`)
-- [ ] Run `evaluate`, then tune thresholds against the labels and record the chosen parameters
-- [ ] Cloud-edge false positives from small cumulus (buffer the SCL cloud mask / brightness test)
+- [x] Cloud false positives from small cumulus SCL misses: SWIR (B11) `cloud_puff` rule; SCL cloud specks on bright hulls no longer split ships (detector v2)
+
+**M1 closed 2026-10-27.** Labelling, measurement, and tuning moved to M2, which is where measurement lives.
 
 **Visual assets (captured now, used in Post 2)**
 - Side-by-side pairs: raw true colour | NDWI water mask | detections. Same crop and scale, numbered boxes.
@@ -63,8 +63,11 @@ Tasks
 against hand labels, with the conditions (cloud %, date, sun-glint) stated.
 
 Tasks
-- Label 8–12 AOI crops (two ports × several dates) in Roboflow, using classical detections as
-  pre-annotations. Keep them as a **test set only**.
+- [ ] **Bernard:** hand-label the 10 exported scenes (`eval/`, 5 per port) in Roboflow → `eval/truth/`
+  (see `eval/README.md`). Keep them as a **test set only**.
+- [ ] Run `evaluate` for the first real precision/recall table (classical v2).
+- [ ] Tune against the labels: size floor (4–6 px specks are mostly small boats/yachts below the
+  "large vessel" target), and re-check the provisional thresholds (`max_ndwi`, `max_ndvi`, `cloud_*`).
 - Check the licence for the S2-SHIPS dataset or alternatives, and write it into `docs/data.md`.
 - Kaggle notebook: tile Sentinel-2 chips (upsampled 2–3×), fine-tune YOLO (small model), export weights.
   Weights are not committed. Download instructions go in the README.

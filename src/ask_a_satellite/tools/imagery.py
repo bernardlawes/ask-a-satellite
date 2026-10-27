@@ -8,8 +8,9 @@ from typing import Any
 from ..config import get_settings
 from ..models import BandAsset, BBox, SceneInfo
 
-# Earth Search v1 asset keys for the bands the pipeline needs.
+# Earth Search v1 asset keys for the bands the pipeline needs, and ones it uses when present.
 BANDS = ("blue", "green", "red", "nir", "scl")
+OPTIONAL_BANDS = ("swir16",)
 
 
 def scene_from_item(item: Any) -> SceneInfo:
@@ -20,7 +21,7 @@ def scene_from_item(item: Any) -> SceneInfo:
     # this flag, but still advertises offset -0.1 in raster:bands. Applying it again makes water negative.
     offset_already_applied = bool(props.get("earthsearch:boa_offset_applied", False))
     assets: dict[str, BandAsset] = {}
-    for key in BANDS:
+    for key in (*BANDS, *OPTIONAL_BANDS):
         a = d.get("assets", {}).get(key)
         if a is None:
             continue

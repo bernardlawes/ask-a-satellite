@@ -20,7 +20,12 @@ from ..config import GDAL_ENV
 from ..models import BBox, SceneInfo
 
 REFLECTANCE_BANDS = ("blue", "green", "red", "nir")
+OPTIONAL_BANDS = ("swir16",)  # 20 m; read when the scene has it (cloud-puff test)
 REFERENCE_BAND = "red"  # a 10 m band defines the output grid
+
+
+def default_bands(scene: SceneInfo) -> tuple[str, ...]:
+    return (*REFLECTANCE_BANDS, *(b for b in OPTIONAL_BANDS if b in scene.assets), "scl")
 
 
 @dataclass
@@ -51,12 +56,14 @@ def _snap_window(win: Window, width: int, height: int) -> Window:
     return Window(col0, row0, col1 - col0, row1 - row0)
 
 
-def read_aoi(scene: SceneInfo, bbox: BBox, bands: tuple[str, ...] = (*REFLECTANCE_BANDS, "scl")) -> AOIRaster:
-    """Read ``bands`` for ``bbox`` from ``scene``. Only the AOI window is fetched over HTTP.
+def read_aoi(scene: SceneInfo, bbox: BBox, bands: tuple[str, ...] | None = None) -> AOIRaster:
+    """Read ``bands`` (default: all the pipeline uses that the scene has) for ``bbox`` from ``scene``.
+    Only the AOI window is fetched over HTTP.
 
     Reflectance = DN * scale + offset (from the asset's ``raster:bands``); nodata (DN 0) becomes NaN.
-    Coarser bands (SCL, 20 m) are resampled with nearest neighbour onto the 10 m reference grid.
+    Coarser bands (SCL, SWIR, 20 m) are resampled with nearest neighbour onto the 10 m reference grid.
     """
+    bands = bands or default_bands(scene)
     out: dict[str, np.ndarray] = {}
     with rasterio.Env(**GDAL_ENV):
         with rasterio.open(scene.assets[REFERENCE_BAND].href) as ref:
@@ -92,8 +99,9 @@ def _cache_path(cache_dir: Path, scene: SceneInfo, bbox: BBox, bands: tuple[str,
 
 
 def read_aoi_cached(scene: SceneInfo, bbox: BBox, cache_dir: Path | None,
-                    bands: tuple[str, ...] = (*REFLECTANCE_BANDS, "scl")) -> AOIRaster:
+                    bands: tuple[str, ...] | None = None) -> AOIRaster:
     """``read_aoi`` with an on-disk .npz cache keyed by scene, bbox, and bands (``None`` disables it)."""
+    bands = bands or default_bands(scene)
     if cache_dir is None:
         return read_aoi(scene, bbox, bands)
     path = _cache_path(cache_dir, scene, bbox, bands)

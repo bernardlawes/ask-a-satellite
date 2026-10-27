@@ -56,7 +56,7 @@ Keeping core tools separate from MCP and the agent means:
 
 1. **search_imagery**: STAC query on Earth Search (`sentinel-2-l2a`) by AOI bbox and date range, with
    `eo:cloud_cover < N` for the whole scene. Returns scene IDs, dates, cloud cover, and band hrefs.
-2. **fetch_aoi**: windowed reads of `green`, `red`, `blue`, `nir` (10 m) and `scl` (20 m, resampled to 10 m)
+2. **fetch_aoi**: windowed reads of `green`, `red`, `blue`, `nir` (10 m) and `swir16`, `scl` (20 m, resampled to 10 m)
    from the COGs. Only the AOI window is downloaded (a few hundred KB), not the 100 km tile.
    DN values are converted to reflectance with the asset's `raster:bands` scale/offset.
 3. **AOI-level quality**: scene-level cloud cover is often misleading for a small AOI, so the cloud fraction
@@ -95,8 +95,12 @@ Training runs in a Kaggle notebook (`notebooks/`). Inference is CPU-only locally
 3. **Candidates** = `sea & ¬cloud & nir > max(water_median + k·MAD(water), floor)`. This is a simple
    CFAR-style test against the local water background. There is deliberately no `¬water` term: white
    hulls reflect green ≈ NIR, so their NDWI is ≈ 0 and many hull pixels pass the water test.
-4. Connected components → filter by area, reject blobs mostly within 30 m of land (surf, jetties,
-   mixed shore pixels), then measure centroid, major-axis length (from image moments), and contrast.
+4. Connected components → filter by area, then reject blobs that touch land or sit < 60 m from it
+   (surf, jetties, roofs, and berthed ships), thin strips (surf lines, wakes), compact SWIR-bright puffs
+   (small cumulus the SCL mask misses: SWIR/NIR ≥ 0.7, elongation < 4), vegetation, and bright shallow
+   water. Then measure centroid, major-axis length (from image moments), and contrast. Small SCL
+   "cloud" specks are ignored, because SCL flags the brightest hulls as cloud. Every rejection is
+   counted by reason in the result's `params`.
 5. **Score**: a 0–1 heuristic from contrast and size, not a probability. Reports call it a "score".
 
 Known failure modes are documented, not hidden: piers and moored barges, breaking wakes, sun-glint,

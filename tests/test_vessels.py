@@ -101,6 +101,50 @@ def test_rejection_rules(synthetic_aoi, patch, reason):
     assert res.params[f"rejected_{reason}"] == 1
 
 
+def _paint(b, rows, cols, nir, green, red, swir_nir):
+    b["nir"][rows, cols] = nir
+    b["green"][rows, cols] = green
+    b["red"][rows, cols] = red
+    b["swir16"][rows, cols] = nir * swir_nir
+
+
+def test_compact_swir_bright_puff_is_rejected_as_cloud(synthetic_aoi):
+    # small cumulus that SCL left as water: round, bright, SWIR/NIR ~ 0.9
+    _paint(synthetic_aoi.bands, slice(60, 68), slice(150, 158), 0.12, 0.13, 0.12, swir_nir=0.9)
+    res = detect_vessels(synthetic_aoi, "test-aoi")
+    assert res.count == len(SHIPS)
+    assert res.params["rejected_cloud_puff"] == 1
+
+
+def test_compact_hull_with_low_swir_is_kept(synthetic_aoi):
+    # same shape and brightness but a hull-like SWIR/NIR of 0.35 -> counted
+    _paint(synthetic_aoi.bands, slice(60, 68), slice(150, 158), 0.12, 0.13, 0.12, swir_nir=0.35)
+    res = detect_vessels(synthetic_aoi, "test-aoi")
+    assert res.count == len(SHIPS) + 1
+    assert res.params["rejected_cloud_puff"] == 0
+
+
+def test_elongated_swir_bright_ship_is_kept(synthetic_aoi):
+    # container ships can be SWIR-bright (0.79 measured), but they are elongated, not puffs
+    _paint(synthetic_aoi.bands, slice(60, 63), slice(140, 160), 0.15, 0.08, 0.12, swir_nir=0.8)
+    assert detect_vessels(synthetic_aoi, "test-aoi").count == len(SHIPS) + 1
+
+
+def test_scl_cloud_speck_on_bright_hull_does_not_split_it(synthetic_aoi):
+    # SCL marks part of a bright hull as cloud (seen on real scenes); the ship must stay whole
+    r, c, h, w = SHIPS[1]
+    synthetic_aoi.bands["scl"][r:r + h, c + 5:c + 12] = 8
+    res = detect_vessels(synthetic_aoi, "test-aoi")
+    assert (r, c, r + h, c + w) in {d.bbox_px for d in res.detections}
+
+
+def test_missing_swir_adds_note(synthetic_aoi):
+    del synthetic_aoi.bands["swir16"]
+    res = detect_vessels(synthetic_aoi, "test-aoi")
+    assert res.params["swir_cloud_test"] == 0
+    assert any("SWIR" in n for n in res.notes)
+
+
 def test_sea_mask_drops_small_water_and_large_holes():
     water = np.zeros((100, 100), bool)
     water[:, 40:] = True  # open water

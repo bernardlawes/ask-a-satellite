@@ -36,6 +36,14 @@ def test_scene_from_item_skips_offset_already_applied_by_earth_search():
     assert s.assets["nir"].scale == 0.0001 and s.assets["nir"].offset == 0.0
 
 
+def test_scene_from_item_includes_optional_swir_when_present():
+    item = stac_item()
+    assert "swir16" not in scene_from_item(item).assets
+    item["assets"]["swir16"] = {"href": "https://example.com/swir16.tif",
+                                "raster:bands": [{"scale": 0.0001, "offset": -0.1}]}
+    assert scene_from_item(item).assets["swir16"].scale == 0.0001
+
+
 def test_scene_from_item_requires_all_bands():
     item = stac_item()
     del item["assets"]["scl"]

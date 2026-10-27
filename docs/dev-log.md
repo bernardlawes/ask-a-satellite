@@ -51,4 +51,28 @@ Scene: `S2B_17RNJ_20261021_0_L2A` (2026-10-21 16:06 UTC). AOI cloud 3% (Port Eve
 - `evaluate` scores precision, recall, and F1 against `eval/truth/`, using centroid-in-box matching
   with 2 px tolerance.
 
-Next: hand-label the 10 scenes, run `evaluate`, and only then tune.
+## 2026-10-27: small clouds (detector v2), M1 closed
+
+The PortMiami 2026-10-11 scene had 56 detections, many on small cumulus clouds.
+
+1. **SCL misses the clouds entirely.** Almost every cloud false alarm sat 10–90 px from the nearest SCL
+   cloud pixel, on pixels SCL calls water. Buffering the cloud mask would not have helped.
+2. **SCL flags bright ships as cloud.** The two largest ships at Port Everglades on 2026-10-21 contained
+   SCL class 8 ("cloud, medium probability") pixels, and the candidate step was cutting holes in them.
+   Small SCL cloud specks (< 50 px) are now ignored. Large SCL clouds still mask.
+3. **Visible brightness doesn't separate cloud from hull, but shortwave infrared does.** On true blob
+   pixels across 5 scenes, cloud fragments measure 0.72–1.17 SWIR/NIR (B11/B08) and hulls mostly
+   0.23–0.61. The one exception is a container ship at 0.81, probably from its deck cargo, which is
+   elongated (4.6) where cloud fragments reach 3.6 at most. Rule: reject if SWIR/NIR ≥ 0.70 **and**
+   elongation < 4.0.
+4. **A measurement mistake.** My first feature table measured every above-threshold pixel in each
+   bounding box, not each blob's own pixels. That made cloud fragments look rounder than they are
+   (#30: 1.5 instead of 2.5), and the first version of the rule missed it. I re-measured on blob pixels
+   and refitted. Lesson for Post 2: check what your feature code actually measures.
+
+Result (v1 → v2 pre-annotations): PortMiami 2026-10-11 went 56 → 36, and the cloud puffs are gone. The
+other 9 scenes changed by 0 to −4. Port Everglades 2026-10-21 is unchanged at 6. What remains is mostly
+4–6 px specks, likely small boats at anchor, which is a size-floor question for M2. Counts are still
+**not validated**.
+
+Next (M2): hand-label the 10 scenes, run `evaluate`, and only then tune.

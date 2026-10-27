@@ -9,7 +9,8 @@ and shows its evidence.
 ![Architecture: question → Claude agent loop ↔ MCP tools → Sentinel-2 on AWS → report](docs/assets/architecture.png)
 
 **Status:** work in progress, built in public. Milestone 1 (imagery pipeline + classical detector
-baseline) is underway. The agent and MCP server are not built yet. See [docs/milestones.md](docs/milestones.md).
+baseline) is complete. Milestone 2 (measuring accuracy against hand labels) is next. The agent and MCP
+server are not built yet. See [docs/milestones.md](docs/milestones.md).
 
 ## Why it exists
 
@@ -77,6 +78,7 @@ change defaults. The agent (M3) will need `ANTHROPIC_API_KEY`.
 - 10 m pixels: only large vessels are visible. Small boats are missed by design.
 - One snapshot per overpass (~10:30 local solar time), every few days at best, and only on clear days.
 - The classical detector rejects anything touching or within 60 m of land. That removes surf, piers,
-  and roofs, but also misses ships berthed against a quay. Small cumulus clouds that the SCL mask misses
-  cause false alarms. See [docs/dev-log.md](docs/dev-log.md).
+  and roofs, but also misses ships berthed against a quay. Small clouds that the SCL mask misses are
+  caught with a SWIR test. Small boats near the size floor are still counted. See
+  [docs/dev-log.md](docs/dev-log.md).
 - Counts are not validated yet. Precision and recall come in Milestone 2.
