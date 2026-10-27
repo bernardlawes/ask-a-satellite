@@ -1,0 +1,48 @@
+[project]
+name = "ask-a-satellite"
+version = "0.1.0"
+description = "An agent that answers plain-language questions about places on Earth using public Sentinel-2 imagery."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Bernard Lawes" }]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "rasterio>=1.4",
+    "pystac-client>=0.8",
+    "pillow>=10.0",
+    "pydantic>=2.6",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Milestone 3: MCP server + Claude agent loop
+agent = ["anthropic>=0.40", "mcp>=1.2"]
+# Milestone 2: YOLO inference (training runs on Kaggle, see notebooks/)
+yolo = ["ultralytics>=8.3"]
+
+[project.scripts]
+ask-a-satellite = "ask_a_satellite.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ask_a_satellite"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["network: hits the public Earth Search STAC API / AWS COGs"]
+addopts = "-m 'not network'"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
