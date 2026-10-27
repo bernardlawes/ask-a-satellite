@@ -72,7 +72,33 @@ def test_bright_blob_against_shore_is_rejected(synthetic_aoi):
     b["green"][100:104, 60:66] = 0.15
     res = detect_vessels(synthetic_aoi, "test-aoi")
     assert res.count == len(SHIPS)
-    assert res.params["rejected_near_shore"] >= 1
+    assert res.params["rejected_touches_land"] >= 1
+
+
+@pytest.mark.parametrize(
+    ("patch", "reason"),
+    [
+        # 1-px wide, 20-px long bright line in open water (surf line / wake)
+        ({"rows": slice(70, 71), "cols": slice(150, 170), "nir": 0.2, "green": 0.1, "red": 0.1},
+         "thin_strip"),
+        # vegetated islet: NIR >> red
+        ({"rows": slice(60, 66), "cols": slice(150, 156), "nir": 0.3, "green": 0.06, "red": 0.03},
+         "vegetation"),
+        # bright shallow water: green >> NIR but NIR above threshold
+        ({"rows": slice(60, 66), "cols": slice(150, 156), "nir": 0.06, "green": 0.2, "red": 0.12},
+         "shallow_bright_water"),
+        # bright blob 3 px from land (surf zone)
+        ({"rows": slice(100, 104), "cols": slice(63, 67), "nir": 0.2, "green": 0.1, "red": 0.1},
+         "near_shore"),
+    ],
+)
+def test_rejection_rules(synthetic_aoi, patch, reason):
+    b = synthetic_aoi.bands
+    for band in ("nir", "green", "red"):
+        b[band][patch["rows"], patch["cols"]] = patch[band]
+    res = detect_vessels(synthetic_aoi, "test-aoi")
+    assert res.count == len(SHIPS)
+    assert res.params[f"rejected_{reason}"] == 1
 
 
 def test_sea_mask_drops_small_water_and_large_holes():

@@ -16,7 +16,7 @@ from .models import AOI, DetectionResult, SceneInfo
 from .tools.annotate import save_annotated
 from .tools.imagery import search_scenes
 from .tools.preprocess import cloud_fraction, true_color
-from .tools.raster import AOIRaster, read_aoi
+from .tools.raster import AOIRaster, read_aoi_cached
 from .tools.vessels import ClassicalParams, detect_vessels
 
 log = logging.getLogger(__name__)
@@ -34,20 +34,33 @@ class Rejected:
     reason: str
 
 
-def first_clear_observation(aoi: AOI, start: date | str, end: date | str, max_scene_cloud: float = 30,
-                            max_aoi_cloud: float = 0.1, params: ClassicalParams | None = None,
-                            ) -> tuple[Observation | None, list[Rejected]]:
-    """Walk scenes newest-first and return the first whose AOI cloud fraction is acceptable."""
+def clear_observations(aoi: AOI, start: date | str, end: date | str, max_scene_cloud: float = 30,
+                       max_aoi_cloud: float = 0.1, params: ClassicalParams | None = None,
+                       cache_dir: Path | None = None, limit: int | None = None,
+                       ) -> tuple[list[Observation], list[Rejected]]:
+    """Walk scenes newest-first; return up to ``limit`` whose AOI cloud fraction is acceptable."""
+    found: list[Observation] = []
     rejected: list[Rejected] = []
     for scene in search_scenes(aoi.bbox, start, end, max_cloud=max_scene_cloud):
-        raster = read_aoi(scene, aoi.bbox)
+        if limit is not None and len(found) >= limit:
+            break
+        raster = read_aoi_cached(scene, aoi.bbox, cache_dir)
         cf = cloud_fraction(raster.bands["scl"])
         if cf > max_aoi_cloud:
             rejected.append(Rejected(scene, f"AOI cloud {cf:.0%} > {max_aoi_cloud:.0%}"))
             log.info("skip %s: AOI cloud %.0f%%", scene.id, cf * 100)
             continue
-        return Observation(raster, detect_vessels(raster, aoi.id, params)), rejected
-    return None, rejected
+        found.append(Observation(raster, detect_vessels(raster, aoi.id, params)))
+    return found, rejected
+
+
+def first_clear_observation(aoi: AOI, start: date | str, end: date | str, max_scene_cloud: float = 30,
+                            max_aoi_cloud: float = 0.1, params: ClassicalParams | None = None,
+                            cache_dir: Path | None = None,
+                            ) -> tuple[Observation | None, list[Rejected]]:
+    found, rejected = clear_observations(aoi, start, end, max_scene_cloud, max_aoi_cloud, params,
+                                         cache_dir, limit=1)
+    return (found[0] if found else None), rejected
 
 
 def write_outputs(obs: Observation, out_dir: Path) -> dict[str, Path]:

@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import rasterio
+from rasterio.crs import CRS
 from rasterio.enums import Resampling
 from rasterio.transform import Affine
 from rasterio.warp import transform_bounds
@@ -79,3 +83,28 @@ def read_aoi(scene: SceneInfo, bbox: BBox, bands: tuple[str, ...] = (*REFLECTANC
                 out[name] = refl
 
     return AOIRaster(scene=scene, bands=out, transform=transform, crs=crs)
+
+
+def _cache_path(cache_dir: Path, scene: SceneInfo, bbox: BBox, bands: tuple[str, ...]) -> Path:
+    key = json.dumps([scene.id, [round(v, 6) for v in bbox.as_tuple()], sorted(bands)])
+    digest = hashlib.sha1(key.encode()).hexdigest()[:12]
+    return Path(cache_dir) / f"{scene.id}_{digest}.npz"
+
+
+def read_aoi_cached(scene: SceneInfo, bbox: BBox, cache_dir: Path | None,
+                    bands: tuple[str, ...] = (*REFLECTANCE_BANDS, "scl")) -> AOIRaster:
+    """``read_aoi`` with an on-disk .npz cache keyed by scene, bbox, and bands (``None`` disables it)."""
+    if cache_dir is None:
+        return read_aoi(scene, bbox, bands)
+    path = _cache_path(cache_dir, scene, bbox, bands)
+    if path.exists():
+        with np.load(path, allow_pickle=False) as z:
+            return AOIRaster(scene=scene, bands={b: z[b] for b in bands},
+                             transform=Affine(*z["_transform"]), crs=CRS.from_wkt(str(z["_crs"])))
+    aoi = read_aoi(scene, bbox, bands)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp.npz")
+    np.savez_compressed(tmp, _transform=np.array(aoi.transform[:6]), _crs=np.array(aoi.crs.to_wkt()),
+                        **aoi.bands)
+    tmp.replace(path)
+    return aoi

@@ -7,8 +7,9 @@ Ships are bright in NIR against dark water:
   3. cand  = sea & ~cloud & nir above a robust water background (median + k * MAD) and a floor.
              Not "& ~water": white hulls reflect green ~= NIR, so their NDWI sits near 0 and many of
              their pixels pass the water test.
-  4. connected components, filtered by size and by distance to land (drops surf and jetties, and
-     unfortunately ships berthed flush against a quay); measured with image moments.
+  4. connected components, filtered by size, then rejected if they touch land or sit < 60 m from it
+     (surf, jetties, roofs -- and, unavoidably at 10 m, ships berthed flush against a quay), are thin
+     strips (surf lines, wakes), vegetated, or very bright shallow water; measured with image moments.
 
 Known misses/false alarms: ships berthed flush against a quay (they merge with land), piers, breaking
 wakes, sun-glint, adjacent ships merging into one blob. See docs/architecture.md.
@@ -36,8 +37,13 @@ class ClassicalParams:
     min_water_body_px: int = 2000  # 0.2 km^2: open water / port basins, not pools or shadows
     close_radius_px: int = 2
     max_hole_px: int = 600  # larger enclosed non-water areas are islands, not ships
-    shore_buffer_px: int = 3  # blobs mostly within 30 m of land are surf, jetties, or mixed shore pixels
-    max_shore_fraction: float = 0.5
+    # Blob rejection rules, derived from feature measurements on the 2026-10-21 scene
+    # (docs/dev-log.md). Provisional until validated against hand labels.
+    min_shore_dist_px: float = 6.0  # median distance to land; surf and mixed shore pixels sit closer
+    thin_width_px: float = 1.6  # ...and thin_elongation: surf lines, wakes, causeways
+    thin_elongation: float = 8.0
+    max_ndvi: float = 0.5  # vegetated islets, seagrass
+    max_ndwi: float = 0.45  # bright shallow water / surf over sand (white hulls measure 0.1-0.4)
     k_mad: float = 6.0
     nir_floor: float = 0.04
     min_area_px: int = 4
@@ -89,9 +95,35 @@ class Blob:
     peak_z: float
 
 
-def find_blobs(green: np.ndarray, nir: np.ndarray, cloud: np.ndarray, valid: np.ndarray,
+def _shape(rows: np.ndarray, cols: np.ndarray) -> tuple[float, float]:
+    """(length, width) in pixels from the coordinate covariance (uniform bar: var = L^2 / 12)."""
+    if rows.size < 2:
+        return 1.0, 1.0
+    ev = np.linalg.eigvalsh(np.cov(np.vstack([rows, cols]).astype(float)))
+    return max(float(np.sqrt(12 * ev[1])), 1.0), float(np.sqrt(12 * max(ev[0], 0.0)))
+
+
+def reject_reason(rows: np.ndarray, cols: np.ndarray, dist_to_land: np.ndarray, nd: np.ndarray,
+                  ndvi: np.ndarray, p: ClassicalParams) -> str | None:
+    d = dist_to_land[rows, cols]
+    if d.min() <= 1.0:
+        return "touches_land"
+    if np.median(d) < p.min_shore_dist_px:
+        return "near_shore"
+    length, width = _shape(rows, cols)
+    if width < p.thin_width_px and length / max(width, 0.5) > p.thin_elongation:
+        return "thin_strip"
+    if np.nanmean(ndvi[rows, cols]) > p.max_ndvi:
+        return "vegetation"
+    if np.nanmean(nd[rows, cols]) > p.max_ndwi:
+        return "shallow_bright_water"
+    return None
+
+
+def find_blobs(bands: dict[str, np.ndarray], cloud: np.ndarray, valid: np.ndarray,
                p: ClassicalParams) -> tuple[list[Blob], dict[str, float]]:
     """Array-level detector. Returns candidate blobs and diagnostics."""
+    green, nir = bands["green"], bands["nir"]
     nd = ndwi(green, nir)
     water = (nd > p.water_ndwi) & valid & ~cloud
     sea = sea_mask(water, p.close_radius_px, p.min_water_body_px, p.max_hole_px)
@@ -108,11 +140,11 @@ def find_blobs(green: np.ndarray, nir: np.ndarray, cloud: np.ndarray, valid: np.
     with np.errstate(invalid="ignore"):
         cand = sea & ~cloud & valid & (nir > thresh)
     land = valid & ~sea & ~cloud
-    near_land = (ndimage.binary_dilation(land, structure=_disk(p.shore_buffer_px))
-                 if p.shore_buffer_px > 0 else np.zeros_like(land))
+    dist_to_land = ndimage.distance_transform_edt(~land)
+    ndvi = -nd if "red" not in bands else _ndvi(bands["red"], nir)
     labels, n = ndimage.label(cand, structure=np.ones((3, 3), dtype=bool))
     blobs: list[Blob] = []
-    rejected_shore = 0
+    rejected = dict.fromkeys(REJECT_REASONS, 0)
     for i, sl in enumerate(ndimage.find_objects(labels), start=1):
         if sl is None:
             continue
@@ -121,23 +153,23 @@ def find_blobs(green: np.ndarray, nir: np.ndarray, cloud: np.ndarray, valid: np.
             continue
         rr = rr + sl[0].start
         cc = cc + sl[1].start
-        if near_land[rr, cc].mean() > p.max_shore_fraction:
-            rejected_shore += 1
+        reason = reject_reason(rr, cc, dist_to_land, nd, ndvi, p)
+        if reason:
+            rejected[reason] += 1
             continue
         peak = float(np.nanmax(nir[rr, cc]))
         blobs.append(Blob(label=i, rows=rr, cols=cc, peak_z=(peak - med) / sigma))
     diag["nir_threshold"] = thresh
-    diag["rejected_near_shore"] = rejected_shore
+    diag.update({f"rejected_{k}": v for k, v in rejected.items()})
     return blobs, diag
 
 
-def _length_px(rows: np.ndarray, cols: np.ndarray) -> float:
-    if rows.size < 2:
-        return 1.0
-    cov = np.cov(np.vstack([rows, cols]).astype(float))
-    lam = float(np.linalg.eigvalsh(cov).max())
-    # For a uniform bar of length L, variance along it is L^2 / 12.
-    return max(float(np.sqrt(12 * lam)), 1.0)
+REJECT_REASONS = ("touches_land", "near_shore", "thin_strip", "vegetation", "shallow_bright_water")
+
+
+def _ndvi(red: np.ndarray, nir: np.ndarray) -> np.ndarray:
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return (nir - red) / (nir + red)
 
 
 def _score(peak_z: float, area_px: int, k: float) -> float:
@@ -151,7 +183,7 @@ def detect_vessels(aoi: AOIRaster, aoi_id: str, params: ClassicalParams | None =
     b = aoi.bands
     cloud = cloud_mask(b["scl"])
     valid = valid_mask(b)
-    blobs, diag = find_blobs(b["green"], b["nir"], cloud, valid, p)
+    blobs, diag = find_blobs(b, cloud, valid, p)
 
     px = aoi.pixel_size_m
     rows_c = [float(bl.rows.mean()) for bl in blobs]
@@ -172,7 +204,7 @@ def detect_vessels(aoi: AOIRaster, aoi_id: str, params: ClassicalParams | None =
                      int(blob.rows.max()) + 1, int(blob.cols.max()) + 1),
             lon=round(float(lon), 6), lat=round(float(lat), 6),
             area_px=int(blob.rows.size), area_m2=float(blob.rows.size * px * px),
-            length_m=round(_length_px(blob.rows, blob.cols) * px, 1),
+            length_m=round(_shape(blob.rows, blob.cols)[0] * px, 1),
             score=_score(blob.peak_z, blob.rows.size, p.k_mad),
         ))
 

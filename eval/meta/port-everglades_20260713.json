@@ -1,0 +1,51 @@
+{
+  "stem": "port-everglades_20260713",
+  "aoi_id": "port-everglades",
+  "aoi_bbox": {
+    "west": -80.135,
+    "south": 26.065,
+    "east": -80.07,
+    "north": 26.11
+  },
+  "scene": {
+    "id": "S2B_17RNJ_20260713_0_L2A",
+    "datetime": "2026-07-13T16:06:12.845000Z",
+    "cloud_cover": 10.422268,
+    "platform": "sentinel-2b",
+    "mgrs_tile": "MGRS-17RNJ",
+    "assets": {
+      "blue": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/7/S2B_17RNJ_20260713_0_L2A/B02.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "green": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/7/S2B_17RNJ_20260713_0_L2A/B03.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "red": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/7/S2B_17RNJ_20260713_0_L2A/B04.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "nir": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/7/S2B_17RNJ_20260713_0_L2A/B08.tif",
+        "scale": 0.0001,
+        "offset": 0.0
+      },
+      "scl": {
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/R/NJ/2026/7/S2B_17RNJ_20260713_0_L2A/SCL.tif",
+        "scale": 1.0,
+        "offset": 0.0
+      }
+    }
+  },
+  "shape": [
+    503,
+    654
+  ],
+  "upscale": 3,
+  "preannotation_method": "classical-ndwi-nir-v1",
+  "credit": "Contains modified Copernicus Sentinel-2 data (2026)"
+}
