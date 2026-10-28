@@ -35,6 +35,9 @@ flowchart LR
     R --> O["Markdown/HTML report<br/>+ annotated PNGs"]
 ```
 
+A designed version of this diagram is in [docs/assets/architecture.png](assets/architecture.png)
+(source: `architecture.svg`).
+
 ## Layers
 
 | Layer | Package | Depends on | Notes |
