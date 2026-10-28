@@ -56,10 +56,10 @@ def main() -> int:
 
     d.text((margin, 40), "What 10 m per pixel looks like", font=_font(64, bold=True), fill=INK)
     sub = _font(38)
-    d.text((margin, 132), "Port Everglades from Sentinel-2. In the inset, a moving ship and its wake blur "
-           "into one", font=sub, fill=MUTED)
-    d.text((margin, 184), f"bright streak about {length_px:.0f} pixels long (≈{ship.length_m:.0f} m, as the "
-           "detector measures it).", font=sub, fill=MUTED)
+    d.text((margin, 132), "Port Everglades from space. Zoom in on a moving ship and it's just a streak of",
+           font=sub, fill=MUTED)
+    d.text((margin, 184), f"pixels: about {length_px:.0f} of them, wake included (roughly "
+           f"{round(ship.length_m, -1):.0f} m).", font=sub, fill=MUTED)
 
     overview = Image.fromarray(rgb).resize((ow, oh), Image.NEAREST)
     od = ImageDraw.Draw(overview)
