@@ -12,7 +12,7 @@
 
   <!-- Title -->
   <text x="60" y="92" font-size="46" font-weight="700" fill="#1B1F24">Ask a Satellite</text>
-  <text x="60" y="134" font-size="22" fill="#4B5563">An agent that answers questions about places on Earth using free Sentinel-2 imagery</text>
+  <text x="60" y="134" font-size="22" fill="#4B5563">Maritime questions, answered from space: an AI agent that counts ships in Sentinel-2 imagery</text>
 
   <!-- Question -->
   <rect x="60" y="180" width="500" height="128" rx="18" fill="#FFFFFF" stroke="#D6D3CC" stroke-width="2"/>
@@ -75,7 +75,7 @@
     <text x="680" y="671" font-size="13" fill="#6B7280" font-family="Segoe UI, Helvetica, Arial, sans-serif">boxes + credit line</text>
     <rect x="898" y="624" width="218" height="58" rx="10" fill="none" stroke="#B8B4AA" stroke-dasharray="6 5"/>
     <text x="914" y="650" fill="#8A8578">next task…</text>
-    <text x="914" y="671" font-size="13" fill="#8A8578" font-family="Segoe UI, Helvetica, Arial, sans-serif">crop health · change</text>
+    <text x="914" y="671" font-size="13" fill="#8A8578" font-family="Segoe UI, Helvetica, Arial, sans-serif">AIS matching · heading</text>
   </g>
 
   <!-- MCP -> data -->
@@ -104,6 +104,6 @@
   <text x="600" y="1056" font-size="32" font-weight="700" fill="#1B1F24" text-anchor="middle">The model decides. The code measures.</text>
   <text x="600" y="1094" font-size="19" fill="#4B5563" text-anchor="middle">Every number in a report comes from a tool that ran on real pixels.</text>
 
-  <text x="60" y="1160" font-size="15" fill="#8A8578">Ask a Satellite · built in public by Bernard Lawes</text>
-  <text x="1140" y="1160" font-size="15" fill="#8A8578" text-anchor="end">Python · MCP · Claude · rasterio · STAC</text>
+  <text x="60" y="1160" font-size="15" fill="#8A8578">Bernard Lawes · github.com/bernardlawes/ask-a-satellite</text>
+  <text x="1140" y="1160" font-size="15" fill="#8A8578" text-anchor="end">Python · MCP · Claude API · rasterio · STAC</text>
 </svg>

@@ -50,7 +50,7 @@ A designed version of this diagram is in [docs/assets/architecture.png](assets/a
 Keeping core tools separate from MCP and the agent means:
 - tests run offline on synthetic rasters,
 - the same tools work from Claude Desktop, Claude Code, or any other MCP client,
-- a new task (crop health, change detection) is a new module in `tools/` plus one MCP registration.
+- a new task (AIS matching, heading estimation) is a new module in `tools/` plus one MCP registration.
 
 ## Data flow for one detection
 
@@ -128,5 +128,6 @@ A new task adds:
 3. a report section renderer.
 
 The agent's system prompt does not list tasks. It discovers them from the MCP tool menu. Examples:
-`crop_health` (NDVI time series over a field polygon), `detect_change` (NDWI/NDBI differencing between
-two dates).
+`match_ais` (pair detections with public AIS positions near the overpass time, and flag ships with no
+AIS match; the data source and its licence are checked before use), `estimate_heading` (each ship's
+orientation from the blob's image moments, which the detector already computes).
