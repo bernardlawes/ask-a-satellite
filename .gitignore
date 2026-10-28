@@ -35,3 +35,6 @@ Thumbs.db
 # Eval kit: images and machine pre-annotations are regenerable; meta/ and truth/ (hand labels) are committed
 eval/images/
 eval/labels/
+
+# Social-media drafts are kept outside the repo
+docs/linkedin/

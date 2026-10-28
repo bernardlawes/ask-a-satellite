@@ -35,8 +35,8 @@ flowchart LR
     R --> O["Markdown/HTML report<br/>+ annotated PNGs"]
 ```
 
-For the LinkedIn diagram, export this from [mermaid.live](https://mermaid.live) as SVG/PNG, or redraw it
-in Excalidraw using the same boxes (see `docs/linkedin/post-1-the-idea.md`).
+A designed version of this diagram is in [docs/assets/architecture.png](assets/architecture.png)
+(source: `architecture.svg`).
 
 ## Layers
 

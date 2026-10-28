@@ -1,12 +1,12 @@
 # Milestones
 
 Scope: about 2–3 weeks part-time for the minimum version (one task, two ports, two-date comparison,
-clean report). Each milestone ends with something worth posting. Draft posts live in `docs/linkedin/`.
+clean report). Each milestone ends with something worth posting. Post drafts are kept outside this repo.
 
 | # | Milestone | Ships | LinkedIn post | Est. |
 |---|---|---|---|---|
 | M0 | Plan & scaffold | Repo structure, architecture doc + diagram, tests running | **Post 1: The idea** | 1–2 days |
-| M1 | Imagery pipeline + classical baseline | STAC search, AOI crop, cloud/water masks, classical vessel detector, annotated PNG, `ask-a-satellite detect` CLI | (feeds Post 2) | 3–4 days |
+| M1 | Imagery pipeline + classical baseline | STAC search, AOI crop, cloud/water masks, classical vessel detector, annotated PNG, `ask-a-satellite detect` CLI | **Post 1.5: What real pixels taught me** (image: `docs/assets/week1-progression.png`) | 3–4 days |
 | M2 | Perception works (measured) | Hand-labelled test set for both ports; precision/recall for classical; YOLO fine-tuned on Kaggle and compared; `method=` switch | **Post 2: Perception works** | 4–5 days |
 | M2.5 | Explainer | Diagram + tiny code snippet of one tool-use round trip (can use the M3 code skeleton) | **Post 2.5: How agents choose tools** | 1 day |
 | M3 | The agent reasons | MCP server exposing the tools; Claude agent loop; `ask-a-satellite ask "..."`; markdown/HTML report; count validator | **Post 3: Demo** | 4–5 days |
@@ -19,14 +19,8 @@ clean report). Each milestone ends with something worth posting. Draft posts liv
 **Done when:** repo builds with `uv sync`, `uv run pytest` passes, `docs/architecture.md` has the diagram.
 
 **Visual assets**
-- Architecture diagram (from the Mermaid source in `docs/architecture.md`).
-  - Tips: redraw it in Excalidraw or export from mermaid.live at 2× scale. Use one accent colour for the
-    agent and a neutral colour for tools. Keep it to 6–8 boxes with short verb labels, size 1200×1200
-    (square) or 1200×627, and include a small Sentinel-2 thumbnail of the port as the "input".
-- Optional second image: a true-colour Sentinel-2 crop of Port Everglades (first output of M1) with the
-  credit line.
-
-Draft: `docs/linkedin/post-1-the-idea.md`.
+- Architecture diagram: `docs/assets/architecture.png` (2400×2400), source `docs/assets/architecture.svg`.
+  Re-render with headless Edge: `--screenshot --window-size=1200,1200 --force-device-scale-factor=2`.
 
 ## M1: Imagery pipeline + classical baseline
 
