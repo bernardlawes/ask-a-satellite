@@ -1,7 +1,7 @@
 # Ask a Satellite
 
-An agent that answers plain-language questions about places on Earth using public Sentinel-2 imagery,
-and shows its evidence.
+Maritime questions, answered from space: an AI agent that counts ships in Sentinel-2 imagery, and
+shows its evidence.
 
 > *"How many large ships are in Port Everglades this week, and how does that compare to last month?"*
 
