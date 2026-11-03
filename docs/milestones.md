@@ -6,7 +6,7 @@ clean report). Each milestone ends with something worth posting. Post drafts are
 | # | Milestone | Ships | LinkedIn post | Est. |
 |---|---|---|---|---|
 | M0 | Plan & scaffold | Repo structure, architecture doc + diagram, tests running | **Post 1: The idea** | 1–2 days |
-| M1 | Imagery pipeline + classical baseline | STAC search, AOI crop, cloud/water masks, classical vessel detector, annotated PNG, `ask-a-satellite detect` CLI | **Post 1.5: What real pixels taught me** (image: `docs/assets/week1-progression.png`) | 3–4 days |
+| M1 | Imagery pipeline + classical baseline | STAC search, AOI crop, cloud/water masks, classical vessel detector, annotated PNG, `ask-a-satellite detect` CLI | **Post 1.5: What real pixels taught me** (images: `docs/assets/week1-progression.png`, `docs/assets/swir-cloud-rule.png`) | 3–4 days |
 | M2 | Perception works (measured) | Hand-labelled test set for both ports; precision/recall for classical; YOLO fine-tuned on Kaggle and compared; `method=` switch | **Post 2: Perception works** | 4–5 days |
 | M2.5 | Explainer | Diagram + tiny code snippet of one tool-use round trip (can use the M3 code skeleton) | **Post 2.5: How agents choose tools** | 1 day |
 | M3 | The agent reasons | MCP server exposing the tools; Claude agent loop; `ask-a-satellite ask "..."`; markdown/HTML report; count validator | **Post 3: Demo** | 4–5 days |
